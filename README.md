@@ -1,6 +1,10 @@
 # gbro-collage-broll
 
 <p align="center">
+  <a href="README.md">简体中文</a> · <a href="README.en.md">English</a> · <a href="README.ja.md">日本語</a>
+</p>
+
+<p align="center">
   <img src="assets/demo-purple.gif" width="180" alt="深紫底：多人协作压出科幻胶片">
   <img src="assets/demo-yellow.gif" width="180" alt="芥末黄底：错误被印刷机批量放大">
   <img src="assets/demo-red.gif" width="180" alt="红底：导演之手摆放棋盘走位">
