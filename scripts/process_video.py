@@ -75,12 +75,22 @@ def strip_audio(input_video, output_video):
     ]
     run_cmd(cmd)
 
-def generate_contact_sheet(video_path, output_image):
-    """Extracts 1 frame per second (5 frames) and tiles them into a contact sheet."""
+def generate_contact_sheet(video_path, output_image, duration=None):
+    """Extracts 1 frame per second and tiles them into a contact sheet.
+    For duration <= 6: tiles as Nx1.
+    For duration > 6: tiles as 5x2 (5 columns, 2 rows).
+    """
     os.makedirs(os.path.dirname(os.path.abspath(output_image)), exist_ok=True)
+    if duration and duration > 6:
+        tile_layout = "5x2"
+    elif duration:
+        tile_layout = f"{max(3, int(round(duration)))}x1"
+    else:
+        tile_layout = "5x1"
+
     cmd = [
         "ffmpeg", "-y", "-i", str(video_path),
-        "-vf", "fps=1,scale=270:480,tile=5x1",
+        "-vf", f"fps=1,scale=270:480,tile={tile_layout}",
         "-frames:v", "1",
         str(output_image)
     ]
@@ -155,22 +165,55 @@ def create_side_by_side(img1_path, img2_path, output_path, label1="Approved Stil
         except Exception:
             pass
 
-def process_item_video(item_dir):
+def find_source_video(item_path):
+    """Finds the generated MP4 file inside omni/run-v01 or the item root directory."""
+    omni_run = item_path / "omni" / "run-v01"
+    # Check known candidate names in omni_run first
+    candidate_names = [
+        "final-10s.mp4", "final-8s.mp4", "final-7s.mp4", "final-6s.mp4", "final-5s.mp4",
+        "final-video.mp4", "final.mp4", "output.mp4", "video.mp4"
+    ]
+    if omni_run.exists():
+        for name in candidate_names:
+            if (omni_run / name).exists():
+                return omni_run / name
+        # Any mp4 in omni_run that is not -noaudio
+        for p in omni_run.glob("*.mp4"):
+            if not p.name.endswith("-noaudio.mp4"):
+                return p
+
+    # Check item_path root
+    for name in candidate_names:
+        if (item_path / name).exists():
+            omni_run.mkdir(parents=True, exist_ok=True)
+            target = omni_run / name
+            shutil.copy2(item_path / name, target)
+            return target
+
+    for p in item_path.glob("*.mp4"):
+        if not p.name.endswith("-noaudio.mp4"):
+            omni_run.mkdir(parents=True, exist_ok=True)
+            target = omni_run / p.name
+            shutil.copy2(p, target)
+            return target
+
+    return None
+
+def process_item_video(item_dir, target_duration=None):
     """Processes a single item's video generation results."""
     item_path = Path(item_dir).resolve()
     omni_run = item_path / "omni" / "run-v01"
-    raw_video = omni_run / "final-5s.mp4"
-    if not raw_video.exists():
-        # Check if user saved directly to item_path / final-5s.mp4
-        if (item_path / "final-5s.mp4").exists():
-            omni_run.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(item_path / "final-5s.mp4", raw_video)
-        else:
-            print(f"Error: Video file not found at: {raw_video}")
-            print(f"Please save the generated video MP4 file to: {raw_video}")
-            return None
+    omni_run.mkdir(parents=True, exist_ok=True)
 
-    noaudio_video = omni_run / "final-5s-noaudio.mp4"
+    raw_video = find_source_video(item_path)
+    if not raw_video or not raw_video.exists():
+        print(f"Error: No video MP4 file found in '{omni_run}' or '{item_path}'.")
+        print(f"Please save your generated MP4 (e.g., final-5s.mp4 or final-10s.mp4) into: {omni_run}")
+        return None
+
+    # Determine output name
+    stem = raw_video.stem
+    noaudio_video = omni_run / f"{stem}-noaudio.mp4"
     contact_sheet = omni_run / "contact-sheet.jpg"
     first_frame_img = omni_run / "video-first-frame.jpg"
     last_frame_img = omni_run / "video-last-frame.jpg"
@@ -182,31 +225,34 @@ def process_item_video(item_dir):
     print(f"  Input: {raw_video}")
 
     # 1. Strip audio
-    print("  1. Stripping audio -> final-5s-noaudio.mp4")
+    print(f"  1. Stripping audio -> {noaudio_video.name}")
     strip_audio(raw_video, noaudio_video)
 
-    # 2. Extract 5-second contact sheet
-    print("  2. Generating contact sheet -> contact-sheet.jpg")
-    generate_contact_sheet(noaudio_video, contact_sheet)
+    # 2. Extract technical specs first to know exact duration
+    meta = probe_video(noaudio_video)
+    actual_dur = meta.get("duration", 5.0)
+    dur_for_tiles = target_duration if target_duration else actual_dur
+    print(f"  2. Technical Specs: {meta} (Duration: {actual_dur}s)")
 
-    # 3. Extract actual first and last frames
-    print("  3. Extracting opening frame -> video-first-frame.jpg")
+    # 3. Extract contact sheet (adaptive Nx1 or 5x2 for up to 10s)
+    print(f"  3. Generating contact sheet ({actual_dur:.1f}s) -> contact-sheet.jpg")
+    generate_contact_sheet(noaudio_video, contact_sheet, duration=dur_for_tiles)
+
+    # 4. Extract actual first and last frames
+    print("  4. Extracting opening frame -> video-first-frame.jpg")
     extract_first_frame(noaudio_video, first_frame_img)
 
-    print("  4. Extracting final frame -> video-last-frame.jpg")
+    print("  5. Extracting final frame -> video-last-frame.jpg")
     extract_last_frame(noaudio_video, last_frame_img)
 
-    # 4. Compare with approved frame
+    # 5. Compare with approved frame
     if approved_last_frame.exists():
-        print("  5. Generating end-frame comparison -> end-frame-comparison.jpg")
+        print("  6. Generating end-frame comparison -> end-frame-comparison.jpg")
         create_side_by_side(approved_last_frame, last_frame_img, comparison_img)
 
-    # 5. Metadata and QA
-    meta = probe_video(noaudio_video)
-    print(f"  6. Technical Specs: {meta}")
-
     # QA verdict
-    duration_pass = 4.0 <= meta.get("duration", 5.0) <= 6.0
+    expected_dur = target_duration if target_duration else actual_dur
+    duration_pass = (abs(actual_dur - expected_dur) <= 1.2) or (2.8 <= actual_dur <= 10.5)
     aspect_pass = meta.get("height", 0) > meta.get("width", 0)
     audio_pass = not meta.get("has_audio", False)
 
@@ -217,7 +263,7 @@ def process_item_video(item_dir):
 - **Status:** {qa_status}
 - **Source Video:** `{raw_video.name}`
 - **Silent Delivery:** `{noaudio_video.name}` (Audio streams: 0)
-- **Duration:** {meta.get('duration', 'N/A')}s (Target: 5.0s)
+- **Duration:** {actual_dur}s (Target: {expected_dur}s, Range: 3s–10s)
 - **Resolution:** {meta.get('width', 'N/A')}x{meta.get('height', 'N/A')} (9:16 Vertical)
 - **Frame Rate:** {meta.get('fps', 'N/A')} fps
 - **Generated Artifacts:**
@@ -226,7 +272,7 @@ def process_item_video(item_dir):
   - Last Frame Comparison: [`end-frame-comparison.jpg`]({comparison_img.as_uri()})
 - **Checklist:**
   - [{'x' if audio_pass else ' '}] Audio stripped (silent MP4)
-  - [{'x' if duration_pass else ' '}] Valid duration (approx. 5s)
+  - [{'x' if duration_pass else ' '}] Valid duration ({actual_dur}s in 3–10s range)
   - [{'x' if aspect_pass else ' '}] Vertical 9:16 composition
   - [x] Assembly progression verified on contact sheet
 """
@@ -251,6 +297,7 @@ def main():
     parser = argparse.ArgumentParser(description="Process and QA generated videos for gbro-collage-broll")
     parser.add_argument("--item", help="Path to item directory (e.g. project/01-concept)")
     parser.add_argument("--project", help="Path to project directory containing multiple items")
+    parser.add_argument("--duration", type=float, help="Expected target duration in seconds (3 to 10)")
     args = parser.parse_args()
 
     if not args.item and not args.project:
@@ -258,7 +305,7 @@ def main():
         sys.exit(1)
 
     if args.item:
-        res = process_item_video(args.item)
+        res = process_item_video(args.item, target_duration=args.duration)
         if not res:
             sys.exit(1)
         sys.exit(0)
@@ -272,7 +319,7 @@ def main():
 
         print(f"Processing {len(subdirs)} items in project {proj.name}...")
         for d in subdirs:
-            process_item_video(d)
+            process_item_video(d, target_duration=args.duration)
 
 if __name__ == "__main__":
     main()

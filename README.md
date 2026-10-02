@@ -21,7 +21,13 @@
 
 - 强烈平坦的纯色纸面色场 + 黑白 halftone 照片剪贴 + 彩色卡纸点缀
 - 元素从空场逐件滑入、卡位、组装（stop-motion 质感），不是淡入或慢 zoom
-- 默认交付 9:16、5 秒、720×1280 或 1080×1920、24fps、无声 MP4，可直接垫在口播下面
+- 默认交付 9:16、3 至 10 秒（默认 5 秒适合快节奏短视频，最长支持 10 秒展开多阶段叙事）、720×1280 或 1080×1920、24fps、无声 MP4，可直接垫在口播下面
+
+## 口播文稿输入方式
+
+支持两种启动输入：
+1. **文稿文字（最简方式）**：直接向 agent 提供一段台词或金句。
+2. **音频文件（.mp3 / .wav）**：通过 `python scripts/inspect_voiceover.py voiceover.mp3` 自动利用 `ffprobe` 检测音频确切时长，并精确计算匹配的视频时长。
 
 ## 工作流：三闸门审批
 
@@ -29,7 +35,7 @@
 
 1. **Gate 1 · 隐喻确认** — 只输出视觉隐喻方案（核心意思 / 关键物件 / 底色 / 组装顺序），不生成任何图片视频。
 2. **Gate 2 · 静帧确认** — 确认后才准备彩色拼贴静帧（`last-frame.png`）与纯色首帧（`first-frame.png`）。手动模式下导出 `manual-image-prompt.md` 供用户在 Google ImageFX 生成；通过 `scripts/process_frames.py` 自动规范化并生成预览。
-3. **Gate 3 · 视频生成** — 静帧通过后生成 5 秒首尾帧组装动画。手动模式下导出 `manual-video-prompt.md` 与首尾帧，用户在 Google Omni / Flow 手动生成后放入目录；通过 `scripts/process_video.py` 自动去音轨、逐秒抽帧、首帧空场验证、尾帧对照与 QA 校验。
+3. **Gate 3 · 视频生成** — 静帧通过后生成 3–10 秒首尾帧组装动画。手动模式下导出 `manual-video-prompt.md` 与首尾帧，用户在 Google Omni / Flow 手动生成后放入目录；通过 `scripts/process_video.py` 自动去音轨、逐秒抽帧（支持 10 秒自适应 5x2 预览）、首帧空场验证、尾帧对照与 QA 校验。
 
 批量模式下支持部分通过：只有确认过的条目进入下一阶段。
 
@@ -63,11 +69,12 @@ gbro-collage-broll/
 ├── agents/openai.yaml                # Codex / Agent interface 配置
 ├── evals/evals.json                  # 四条闸门行为评测
 └── scripts/
+    ├── inspect_voiceover.py          # 口播时长检测与分析工具（音频文件与文本估算）
     ├── check_setup.py                # 跨平台环境自检（支持 manual 与 api 模式）
     ├── check_setup.sh                # Shell 环境自检脚本
     ├── process_frames.py             # Gate 2 静帧处理、自动生成纯色首帧与预览
-    ├── prepare_manual_video.py       # Gate 3 手动视频提示词与规格说明导出
-    ├── process_video.py              # Gate 3 视频后处理、去音轨、抽帧对比与 QA
+    ├── prepare_manual_video.py       # Gate 3 手动视频提示词与规格说明导出（支持 3-10 秒）
+    ├── process_video.py              # Gate 3 视频后处理、去音轨、自适应抽帧对比与 QA
     ├── generate_video.py             # Gemini Omni Flash 视频生成（含 --manual 导出支持）
     ├── upload_file.py                # Files API 上传辅助
     └── generate_veo_first_last.py    # 旧 Veo 链路（仅兼容保留）

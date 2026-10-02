@@ -22,7 +22,17 @@ def generate_manual_package(item_dir, prompt_text, duration=5, aspect_ratio="9:1
 
     first_frame = frames_dir / "first-frame.png"
     last_frame = frames_dir / "last-frame.png"
-    target_mp4 = omni_run_dir / "final-5s.mp4"
+    
+    # Support final-{duration}s.mp4 and final-5s.mp4
+    target_mp4 = omni_run_dir / f"final-{duration}s.mp4"
+
+    # Pacing advice based on duration
+    if duration <= 5:
+        pacing_note = "Snappy 5s assembly: elements enter quickly from 0s to 3.5s, holding the completed collage steadily for the final 1.5s."
+    elif duration <= 7:
+        pacing_note = f"Balanced {duration}s assembly: structure arrives 0-2s, subjects & accents arrive 2-{duration-2}s, holding the completed collage for the final 2s."
+    else:
+        pacing_note = f"Extended {duration}s assembly: multi-phase assembly with structure (0-3s), main mechanics & subjects (3-{duration-3}s), accent cards ({duration-3}-{duration-2}s), holding the completed collage steadily for the final 2-3s."
 
     # Write raw prompt
     raw_prompt_file = item_path / "omni-prompt.txt"
@@ -33,7 +43,7 @@ def generate_manual_package(item_dir, prompt_text, duration=5, aspect_ratio="9:1
 
     guide_content = f"""# Gate 3: Manual Video Generation Guide for {item_path.name}
 
-Use this guide to generate the 5-second paper-collage assembly video using **Google Omni**, **Google Flow**, or **Veo** without needing an API key.
+Use this guide to generate the {duration}-second paper-collage assembly video using **Google Omni**, **Google Flow**, or **Veo** without needing an API key.
 
 ---
 
@@ -46,7 +56,7 @@ Use this guide to generate the 5-second paper-collage assembly video using **Goo
 | **Image 1 (First Frame)** | [`{first_frame.name}`]({first_frame.as_uri()}) | Pure color paper field (`{color}`) |
 | **Image 2 (Last Frame)** | [`{last_frame.name}`]({last_frame.as_uri()}) | Approved completed collage |
 | **Aspect Ratio** | **9:16** (Vertical / 720×1280 or 1080×1920) | Locked vertical framing |
-| **Duration** | **5 seconds** | 24 fps stop-motion assembly |
+| **Duration** | **{duration} seconds** (Supports 3s–10s) | {pacing_note} |
 | **Audio** | **None / Silent** | Audio will be stripped in post-processing |
 | **Camera Movement** | **Locked-off (Static)** | No camera panning, no slow zoom |
 
@@ -72,6 +82,8 @@ Please upload these two images to your video generator:
 {prompt_text.strip()}
 ```
 
+*Pacing Tip:* {pacing_note}
+
 ---
 
 ## 4. Where to Save the Output Video
@@ -80,32 +92,34 @@ Once Google Omni / Flow produces the video, download the MP4 and save it to:
 ```
 {target_mp4}
 ```
+*(Alternative valid names: `{omni_run_dir / "final-video.mp4"}` or `{omni_run_dir / "final-5s.mp4"}`)*
 
 ---
 
 ## 5. Next Steps (Continuing the Workflow)
 
-After saving `final-5s.mp4`, tell the agent:
+After saving the MP4 file, tell the agent:
 > *"I have generated and saved the video for {item_path.name}."*
 
 Or run the post-processing script directly:
 ```bash
-python scripts/process_video.py --item "{item_path}"
+python scripts/process_video.py --item "{item_path}" --duration {duration}
 ```
 
 The workflow will automatically:
-1. Strip any audio to create `final-5s-noaudio.mp4`.
-2. Extract the 5-second contact sheet (`contact-sheet.jpg`).
+1. Strip any audio to create `final-{duration}s-noaudio.mp4` (or `final-video-noaudio.mp4`).
+2. Extract the {duration}-frame contact sheet (`contact-sheet.jpg`).
 3. Verify the opening frame is clean (`video-first-frame.jpg`).
 4. Generate the side-by-side end-frame comparison (`end-frame-comparison.jpg`).
-5. Run automated QA checks and finalize delivery!
+5. Run automated QA checks (validating {duration}s duration) and finalize delivery!
 """
 
     guide_file.write_text(guide_content, encoding="utf-8")
     print(f"Generated manual prompt package for {item_path.name}:")
-    print(f"  Guide:  {guide_file}")
-    print(f"  Prompt: {raw_prompt_file}")
-    print(f"  Target: {target_mp4}")
+    print(f"  Duration: {duration}s")
+    print(f"  Guide:    {guide_file}")
+    print(f"  Prompt:   {raw_prompt_file}")
+    print(f"  Target:   {target_mp4}")
     return guide_file
 
 def main():

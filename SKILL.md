@@ -1,12 +1,12 @@
 ---
 name: gbro-collage-broll
-description: Converts ~5-second voiceover scripts, opinion sentences, or abstract concepts into premium editorial halftone paper-collage assembly B-roll clips. Trigger when user says "collage b-roll", "paper collage b-roll", "halftone collage", "assemble animation", or "gbro-collage-broll". Enforces a strict three-gate approval protocol: Gate 1 metaphor proposal, Gate 2 still-frame approval, Gate 3 video generation. Fully supports Manual / No-API mode (writing full prompts and specifications to files for manual generation via Google Omni, Google Flow, and Google ImageFX) as well as automated API mode.
+description: Converts 3 to 10-second voiceover scripts, opinion sentences, or audio files into premium editorial halftone paper-collage assembly B-roll clips. Trigger when user says "collage b-roll", "paper collage b-roll", "halftone collage", "assemble animation", or "gbro-collage-broll". Enforces a strict three-gate approval protocol: Gate 1 metaphor proposal, Gate 2 still-frame approval, Gate 3 video generation. Fully supports Manual / No-API mode (writing full prompts and specifications to files for manual generation via Google Omni, Google Flow, and Google ImageFX) as well as automated API mode. Supports flexible durations up to 10 seconds.
 compatibility: Python >= 3.10, ffmpeg / ffprobe. Works cross-platform on Windows, macOS, and Linux. No API key required for Manual Mode. For optional automated API video generation, requires GEMINI_API_KEY and google-genai >= 2.10.0.
 ---
 
 # gbro Collage B-Roll (Halftone Paper-Collage)
 
-Transform a ~5-second voiceover line into a sharp visual concept, then assemble it into a premium editorial paper-collage B-roll animation.
+Transform a voiceover line (or audio recording) into a sharp visual concept, then assemble it into a premium editorial paper-collage B-roll animation (3 to 10 seconds).
 
 ## Key Visual Aesthetic
 - **Solid Paper Color Field:** Bold, flat, uncoated-paper background (custom hex per topic).
@@ -14,7 +14,32 @@ Transform a ~5-second voiceover line into a sharp visual concept, then assemble 
 - **Colored Cardstock Accents:** Vibrant paper accents (yellow, red, teal, orange, violet) highlight key focal elements.
 - **Physical Paper Craft:** Crisp machine-cut edges, thin warm-cream keylines, soft low-opacity physical drop shadows, fine paper grain.
 - **Assemble-from-Empty Motion:** Elements slide in, snap into place, and lock together with tactile stop-motion timing from an empty color canvas to a completed poster composition (no slow zoom, no camera drift, no 3D morphing).
-- **Standard Deliverable:** 9:16 vertical, 5 seconds, 720×1280 or 1080×1920, 24 fps, completely silent MP4.
+- **Standard Deliverable:** 9:16 vertical, 3 to 10 seconds (default 5s, configurable up to 10s), 720×1280 or 1080×1920, 24 fps, completely silent MP4.
+
+---
+
+## Voiceover Input & Duration Planning
+
+You can start the workflow using either a **text sentence** or an **audio file**:
+
+### Option A: Text Script (Default & Simplest)
+You do **not** need an audio file. Simply provide the sentence or quote from your script:
+```text
+collage b-roll: Most people think AI will do the thinking for them, but it's really just a mirror reflecting your prompt's flaws.
+```
+- A typical spoken sentence of 12–18 words takes about **5 seconds** to speak aloud.
+- A longer sentence of 20–30 words takes about **8 to 10 seconds**.
+
+### Option B: Audio File (.mp3, .wav, .m4a)
+If you already recorded your voiceover, you can point to the audio file:
+```bash
+python scripts/inspect_voiceover.py path/to/voiceover.mp3
+```
+The script uses `ffprobe` to measure the exact spoken duration and automatically suggests the ideal video length (e.g., 7.5s audio -> 8s video).
+
+### Why 5 Seconds vs. Up to 10 Seconds?
+- **5 Seconds (Punchy B-Roll):** Best for fast-paced Reels, TikTok, and YouTube Shorts where visual cuts happen every 3–5 seconds to retain viewer retention. Pacing: 0–3.5s fast assembly, 3.5–5s hold finished composition.
+- **8–10 Seconds (Editorial & Complex Metaphors):** Best for longer narrative thoughts, multi-part concepts, and deeper documentary video essays. Pacing: 0–6s multi-phase assembly (background framework → main mechanisms → accent cards), 6–10s holding the completed visual metaphor steadily.
 
 ---
 
@@ -25,8 +50,9 @@ This workflow supports two operational modes:
 | Feature | Manual Mode (Default / No-API) | Automated API Mode |
 |---|---|---|
 | **API Key Requirement** | **None** (Zero API keys needed) | Requires `GEMINI_API_KEY` |
+| **Duration Support** | **3 to 10 seconds** (user selectable in Google Omni/Flow) | 3 to 10 seconds (via `--duration`) |
 | **Image Generation (Gate 2)** | Agent exports prompt guide (`manual-image-prompt.md`). User generates via Google ImageFX / Imagen 3 / Gemini, saves to `frames/last-frame-original.png`. Script scales and generates `first-frame.png`. | Automated via built-in agent image tool. |
-| **Video Generation (Gate 3)** | Agent exports complete prompt & specs (`manual-video-prompt.md`, `omni-prompt.txt`). User generates in Google Omni / Flow web UI with `first-frame.png` & `last-frame.png`, saves to `omni/run-v01/final-5s.mp4`. Script handles audio stripping & QA. | Automated via `scripts/generate_video.py` calling `gemini-omni-flash-preview`. |
+| **Video Generation (Gate 3)** | Agent exports complete prompt & specs (`manual-video-prompt.md`, `omni-prompt.txt`). User generates in Google Omni / Flow web UI with `first-frame.png` & `last-frame.png`, saves to `omni/run-v01/final-{duration}s.mp4`. Script handles audio stripping & QA. | Automated via `scripts/generate_video.py` calling `gemini-omni-flash-preview`. |
 | **Dependencies** | Python >= 3.10, ffmpeg, ffprobe | Python >= 3.10, ffmpeg, ffprobe, `google-genai >= 2.10.0` |
 
 ---

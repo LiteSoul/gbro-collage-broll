@@ -11,7 +11,7 @@
   <img src="assets/demo-teal.gif" width="180" alt="Teal background: scissors cut open the shot track">
 </p>
 
-Turn a ~5s voiceover line into a premium editorial **halftone paper-collage assembly animation** B-roll clip.
+Turn a 3 to 10-second voiceover line (or audio recording) into a premium editorial **halftone paper-collage assembly animation** B-roll clip.
 
 Compatible with both **Manual / No-API mode** (generating complete prompt guides for manual web generation via Google Omni Flash, Google Flow, and Google ImageFX) and **Automated API mode** (direct Gemini Omni Flash first/last-frame generation).
 
@@ -19,7 +19,14 @@ Compatible with both **Manual / No-API mode** (generating complete prompt guides
 
 - Bold, flat, solid-color paper fields + black-and-white halftone photo cutouts + colored cardstock accents
 - Elements slide in, snap into place, and assemble piece-by-piece from an empty canvas with a tactile stop-motion feel (not a simple fade or slow zoom)
-- Default deliverable is a silent 9:16, 5-second, 720×1280 or 1080×1920, 24 fps MP4 ready to drop directly beneath voiceover audio
+- Flexible duration: 3 to 10 seconds (default 5s for punchy cuts, up to 10s for deeper visual narratives)
+- Default deliverable is a silent 9:16, 720×1280 or 1080×1920, 24 fps MP4 ready to drop directly beneath voiceover audio
+
+## Voiceover Input: Text or Audio File
+
+You can start the workflow in two ways:
+1. **Text Script (Simplest):** Just provide the sentence or spoken quote from your video script.
+2. **Audio File (`.mp3`, `.wav`, `.m4a`):** Run `python scripts/inspect_voiceover.py voiceover.mp3` to measure the exact spoken duration and automatically calculate the matching video length.
 
 ## Workflow: Three Approval Gates
 
@@ -29,8 +36,8 @@ The core of this skill is a mandatory three-stage approval process, allowing you
 2. **Gate 2 · Still-Frame Approval** — Prepares the color collage ending still frame (`last-frame.png`) and the matching solid-color opening frame (`first-frame.png`).
    - *Manual Mode:* Exports `manual-image-prompt.md`. You generate the image in Google ImageFX or Gemini, save it to `frames/last-frame-original.png`, and the script automatically formats it and creates previews.
    - *API Mode:* Generates the still frame via built-in agent image tools.
-3. **Gate 3 · Video Generation & QA** — Produces the 5-second assembly animation from empty first frame to approved last frame.
-   - *Manual Mode (No API key needed):* Writes `manual-video-prompt.md` with complete prompts, generation settings, and keyframe links. You generate the video in Google Omni / Flow web generator using the first and last frame, save `final-5s.mp4` to the project, and the script automatically strips audio, extracts 1-second contact sheets, and executes comprehensive QA.
+3. **Gate 3 · Video Generation & QA** — Produces the 3–10 second assembly animation from empty first frame to approved last frame.
+   - *Manual Mode (No API key needed):* Writes `manual-video-prompt.md` with complete prompts, pacing advice (5s vs 10s), generation settings, and keyframe links. You generate the video in Google Omni / Flow web generator using the first and last frame, save the MP4 into the project, and the script automatically strips audio, extracts 1-second contact sheets (adaptive Nx1 or 5x2 for 10s), and executes comprehensive QA.
    - *API Mode:* Calls `gemini-omni-flash-preview` automatically.
 
 Batch mode supports partial approval: only approved items proceed to the next stage.
@@ -97,11 +104,12 @@ gbro-collage-broll/
 ├── agents/openai.yaml                # Agent interface definition
 ├── evals/evals.json                  # Gate-behavior evaluation scenarios
 └── scripts/
+    ├── inspect_voiceover.py          # Voiceover duration analyzer (audio file & text)
     ├── check_setup.py                # Cross-platform environment check (Manual & API modes)
     ├── check_setup.sh                # Shell environment check
     ├── process_frames.py             # Gate 2 image ingestion, scaling, solid first-frame generator & QA
-    ├── prepare_manual_video.py       # Gate 3 manual prompt & specifications generator
-    ├── process_video.py              # Gate 3 audio stripper, 5-frame contact sheet & QA verifier
+    ├── prepare_manual_video.py       # Gate 3 manual prompt & specifications generator (3s–10s)
+    ├── process_video.py              # Gate 3 audio stripper, adaptive contact sheet (up to 10s) & QA verifier
     ├── generate_video.py             # Gemini Omni Flash batch video generator (with --manual support)
     ├── upload_file.py                # Files API upload helper (API mode)
     └── generate_veo_first_last.py    # Legacy Veo pipeline (retained for compatibility)
