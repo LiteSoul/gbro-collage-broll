@@ -77,16 +77,25 @@ def strip_audio(input_video, output_video):
 
 def generate_contact_sheet(video_path, output_image, duration=None):
     """Extracts 1 frame per second and tiles them into a contact sheet.
-    For duration <= 6: tiles as Nx1.
-    For duration > 6: tiles as 5x2 (5 columns, 2 rows).
+    Layout dynamically matches duration (3 to 10 seconds) without empty tiles:
+    - 3s-6s: Nx1
+    - 7s: 7x1
+    - 8s: 4x2
+    - 9s: 3x3
+    - 10s: 5x2
     """
     os.makedirs(os.path.dirname(os.path.abspath(output_image)), exist_ok=True)
-    if duration and duration > 6:
+    dur_int = max(3, min(10, int(round(duration)))) if duration else 5
+    if dur_int == 10:
         tile_layout = "5x2"
-    elif duration:
-        tile_layout = f"{max(3, int(round(duration)))}x1"
+    elif dur_int == 9:
+        tile_layout = "3x3"
+    elif dur_int == 8:
+        tile_layout = "4x2"
+    elif dur_int == 7:
+        tile_layout = "7x1"
     else:
-        tile_layout = "5x1"
+        tile_layout = f"{dur_int}x1"
 
     cmd = [
         "ffmpeg", "-y", "-i", str(video_path),

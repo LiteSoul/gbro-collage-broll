@@ -4,7 +4,7 @@ scripts/process_frames.py
 Handles Gate 2 Still Frame preparation and processing for gbro-collage-broll.
 
 Features:
-1. Export manual image-generation prompt guides for Google ImageFX / Imagen 3 / Gemini Image.
+1. Export manual image-generation prompt guides for Nano Banana / Imagen / Midjourney.
 2. Ingest user-provided image (last-frame-original.png), scale/crop to vertical 9:16 (1080x1920) as last-frame.png.
 3. Automatically generate empty solid-color first-frame.png matching the scene background color.
 4. Generate Gate 2 contact sheet and QA report (gate2-qa.md).
@@ -154,7 +154,7 @@ def export_image_guide(project_dir, item_dir, prompt_text, hex_color, visual_spe
 
     content = f"""# Gate 2: Manual Image Generation Guide
 
-Please follow these steps to generate the completed paper-collage still frame using your preferred AI image generator (e.g., **Google ImageFX**, **Imagen 3**, **Gemini**, or **Midjourney**).
+Please follow these steps to generate the completed paper-collage still frame using your preferred AI image generator (e.g., **Nano Banana**, **Imagen**, **Gemini**, or **Midjourney**).
 
 ---
 
@@ -178,7 +178,7 @@ Please follow these steps to generate the completed paper-collage still frame us
 
 ## 3. What to do next:
 
-1. Copy the prompt above and paste it into **Google ImageFX** (or your image generator).
+1. Copy the prompt above and paste it into **Nano Banana** (or your preferred image generator).
 2. Ensure the aspect ratio is set to **9:16**.
 3. Generate the image and pick the best candidate that matches the visual metaphor.
 4. Save / paste the downloaded image to:

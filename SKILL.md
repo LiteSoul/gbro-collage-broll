@@ -1,6 +1,6 @@
 ---
 name: gbro-collage-broll
-description: Converts 3 to 10-second voiceover scripts, opinion sentences, or audio files into premium editorial halftone paper-collage assembly B-roll clips. Trigger when user says "collage b-roll", "paper collage b-roll", "halftone collage", "assemble animation", or "gbro-collage-broll". Enforces a strict three-gate approval protocol: Gate 1 metaphor proposal, Gate 2 still-frame approval, Gate 3 video generation. Fully supports Manual / No-API mode (writing full prompts and specifications to files for manual generation via Google Omni, Google Flow, and Google ImageFX) as well as automated API mode. Supports flexible durations up to 10 seconds.
+description: Converts 3 to 10-second voiceover scripts, opinion sentences, or audio files into premium editorial halftone paper-collage assembly B-roll clips. Trigger when user says "collage b-roll", "paper collage b-roll", "halftone collage", "assemble animation", or "gbro-collage-broll". Enforces a strict three-gate approval protocol: Gate 1 metaphor proposal, Gate 2 still-frame approval, Gate 3 video generation. Supports direct Agent Image Generation for speed, with automated fallback to manual generation via Nano Banana, and manual video generation via Google Omni / Google Flow / Veo (as well as automated API mode). Supports flexible durations up to 10 seconds.
 compatibility: Python >= 3.10, ffmpeg / ffprobe. Works cross-platform on Windows, macOS, and Linux. No API key required for Manual Mode. For optional automated API video generation, requires GEMINI_API_KEY and google-genai >= 2.10.0.
 ---
 
@@ -29,30 +29,36 @@ collage b-roll: Most people think AI will do the thinking for them, but it's rea
 ```
 - A typical spoken sentence of 12–18 words takes about **5 seconds** to speak aloud.
 - A longer sentence of 20–30 words takes about **8 to 10 seconds**.
+- **Mandatory Step:** ALWAYS inspect script duration using `inspect_voiceover.py` before proposing Gate 1:
+```bash
+python scripts/inspect_voiceover.py "Your voiceover sentence here"
+```
 
 ### Option B: Audio File (.mp3, .wav, .m4a)
-If you already recorded your voiceover, you can point to the audio file:
+If you already recorded your voiceover, point to the audio file:
 ```bash
 python scripts/inspect_voiceover.py path/to/voiceover.mp3
 ```
 The script uses `ffprobe` to measure the exact spoken duration and automatically suggests the ideal video length (e.g., 7.5s audio -> 8s video).
 
-### Why 5 Seconds vs. Up to 10 Seconds?
-- **5 Seconds (Punchy B-Roll):** Best for fast-paced Reels, TikTok, and YouTube Shorts where visual cuts happen every 3–5 seconds to retain viewer retention. Pacing: 0–3.5s fast assembly, 3.5–5s hold finished composition.
-- **8–10 Seconds (Editorial & Complex Metaphors):** Best for longer narrative thoughts, multi-part concepts, and deeper documentary video essays. Pacing: 0–6s multi-phase assembly (background framework → main mechanisms → accent cards), 6–10s holding the completed visual metaphor steadily.
+### Pacing Rules: 5 Seconds vs. 8–10 Seconds vs. Split Sequence
+- **Never force a 20+ word sentence into 5 seconds:** That requires speaking at >250 WPM (rushed/unnatural).
+- **5 Seconds (Punchy B-Roll):** Best for 10–16 words. Pacing: 0–3.5s fast assembly, 3.5–5s hold finished composition.
+- **8–10 Seconds (Editorial & Complex Metaphors):** Best for 18–30 words. Pacing: 0–6.5s layered multi-phase assembly, 6.5–10s steady poster hold.
+- **Split Sequence (Two 5s Clips):** When a 20+ word sentence has a rhetorical turn (e.g. "People think X, [CUT] but actually Y"), offering a 2-clip cut gives maximum viewer retention on TikTok/Shorts/Reels.
 
 ---
 
-## Operating Modes: Manual (No-API) vs. API
+## Operating Modes: Manual / Hybrid vs. API
 
 This workflow supports two operational modes:
 
-| Feature | Manual Mode (Default / No-API) | Automated API Mode |
+| Feature | Manual / Hybrid Mode (Default / Zero API Keys) | Automated API Mode |
 |---|---|---|
 | **API Key Requirement** | **None** (Zero API keys needed) | Requires `GEMINI_API_KEY` |
 | **Duration Support** | **3 to 10 seconds** (user selectable in Google Omni/Flow) | 3 to 10 seconds (via `--duration`) |
-| **Image Generation (Gate 2)** | Agent exports prompt guide (`manual-image-prompt.md`). User generates via Google ImageFX / Imagen 3 / Gemini, saves to `frames/last-frame-original.png`. Script scales and generates `first-frame.png`. | Automated via built-in agent image tool. |
-| **Video Generation (Gate 3)** | Agent exports complete prompt & specs (`manual-video-prompt.md`, `omni-prompt.txt`). User generates in Google Omni / Flow web UI with `first-frame.png` & `last-frame.png`, saves to `omni/run-v01/final-{duration}s.mp4`. Script handles audio stripping & QA. | Automated via `scripts/generate_video.py` calling `gemini-omni-flash-preview`. |
+| **Image Generation (Gate 2)** | **Primary:** Agent directly generates the 9:16 still frame via built-in tool.<br/>**Fallback:** If tool is unavailable, exhausted, or rate-limited, agent exports `manual-image-prompt.md`. User generates via **Nano Banana** (or external AI) and saves to `frames/last-frame-original.png`. Script scales and generates `first-frame.png`. | Automated via built-in agent image tool. |
+| **Video Generation (Gate 3)** | Agent exports complete prompt & specs (`manual-video-prompt.md`, `omni-prompt.txt`). User generates in Google Omni / Google Flow / Veo web UI with `first-frame.png` & `last-frame.png`, saves to `omni/run-v01/final-{duration}s.mp4`. Script handles audio stripping & QA. | Automated via `scripts/generate_video.py` calling `gemini-omni-flash-preview`. |
 | **Dependencies** | Python >= 3.10, ffmpeg, ffprobe | Python >= 3.10, ffmpeg, ffprobe, `google-genai >= 2.10.0` |
 
 ---
@@ -77,26 +83,31 @@ In Manual Mode, only `ffmpeg`, `ffprobe`, and `python >= 3.10` are required.
 
 ```mermaid
 flowchart TD
-    A["Voiceover Input (approx. 5s)"] --> B["Gate 1: Metaphor Design<br/>(Text only: Idea, Mood, Objects, Colors, Order)"]
-    B --> C{"User Approves Metaphor?"}
+    A["Voiceover Input (Audio or Text)"] --> A0["Step 0: Duration Feasibility Check<br/>(inspect_voiceover.py: 3-5s vs 6-10s vs Split Sequence)"]
+    A0 --> B["Gate 1: Metaphor Design & Duration Proposal<br/>(Core Meaning, Objects, Palette, Calibrated Motion)"]
+    B --> C{"User Approves Metaphor & Duration?"}
     C -- Revision Requested --> B
-    C -- "Yes / Approved" --> D["Gate 2: Still Frame Generation<br/>(Write Prompt / Generate / Scale 1080x1920 / Solid First Frame)"]
+    C -- "Yes / Approved" --> D["Gate 2: Still Frame Generation<br/>(Prompt Guide / Generate / Scale 1080x1920 / Solid First Frame)"]
     D --> E{"User Approves Still Frame?"}
     E -- Revision Requested --> D
     E -- "Yes / Approved" --> F["Gate 3: Video Assembly<br/>(Manual Package / Google Omni / Strip Audio / QA Sheets)"]
-    F --> G["Final Deliverable<br/>(5s 9:16 Silent MP4 + QA Contact Sheets)"]
+    F --> G["Final Deliverable<br/>(3-10s 9:16 Silent MP4 + QA Contact Sheets)"]
 ```
 
-### Gate 1: Visual Metaphor Proposal
-**Deliverable:** Conceptual design only. No images, no video generation.
+### Gate 1: Visual Metaphor & Duration Proposal
+**Deliverable:** Conceptual design and calibrated timing plan only. No images, no video generation.
 
-When given a script line, analyze the core meaning and output:
-1. **Core Meaning:** What the audience should instantly grasp.
-2. **Mood / Tone:** e.g., Analytical, Urgent, Revelatory, Playful, Satirical.
-3. **One-Sentence Visual Proposition:** The single visual metaphor.
-4. **3–6 Key Objects:** Halftone photo cutouts + colored cardstock components.
-5. **Color Palette:** Flat background hex code + accent paper colors.
-6. **Assembly Motion Sequence:** Piece-by-piece entry order (Background → Structure → Main Subjects → Accents → Result).
+When given a script line, FIRST inspect duration using `scripts/inspect_voiceover.py`. Never assume 5 seconds. Output:
+1. **Duration & Pacing Plan:** Word count, estimated speaking duration (~140 WPM), recommended clip duration (3s–10s). If >18 words, explicitly offer:
+   - (A) Extended duration (e.g. 8–10s) with multi-phase assembly timing breakdown, or
+   - (B) Split into a 2-clip sequence (each 5s) for fast-paced short-form retention, or
+   - (C) Tighten copy to fit a single 5s clip.
+2. **Core Meaning:** What the audience should instantly grasp.
+3. **Mood / Tone:** e.g., Analytical, Urgent, Revelatory, Playful, Satirical.
+4. **One-Sentence Visual Proposition:** The single visual metaphor.
+5. **3–6 Key Objects:** Halftone photo cutouts + colored cardstock components.
+6. **Color Palette:** Flat background hex code + accent paper colors.
+7. **Calibrated Assembly Motion Sequence:** Piece-by-piece entry order with exact second-by-second timestamps tailored to the chosen duration (e.g., 5s: 0-3.5s assembly, 1.5s hold; 10s: 0-6.5s layered assembly, 3.5s hold).
 
 **Action:** **HALT and wait for user confirmation** ("Approved", "Go ahead", or specific revision requests). In batch requests, only advance approved items.
 
@@ -105,7 +116,25 @@ When given a script line, analyze the core meaning and output:
 ### Gate 2: Still-Frame Preparation & Approval
 **Deliverable:** Vertical 9:16 completed collage still frame (`last-frame.png`), solid color opening frame (`first-frame.png`), and `still-contact-sheet.jpg`.
 
-#### Manual Mode (Default / No-API):
+#### Workflow Execution:
+
+##### Path A: Agent Direct Generation (Primary / Default Time Saver)
+1. **Write Visual Specification:** Save `<project>/<item>/visual-spec.json`.
+2. **Generate Still Frame:** Agent directly invokes the built-in `generate_image` tool (AspectRatio: `9:16`) using the optimized paper-collage prompt.
+3. **Save Raw Image:** Save the generated image to `<project>/<item>/frames/last-frame-original.png`.
+4. **Format & Prepare Frames:**
+   Run:
+   ```bash
+   python scripts/process_frames.py --item "<project>/<item>" --color "<HEX>"
+   ```
+   This automatically:
+   - Resizes/crops `last-frame-original.png` into 1080×1920 `last-frame.png`.
+   - Generates the matching solid background `first-frame.png`.
+   - Builds `still-contact-sheet.jpg` and writes `<project>/gate2-qa.md`.
+5. **Present to User:** Show the still frame and contact sheet to the user.
+
+##### Path B: Fallback / Manual Generation (via Nano Banana)
+*Trigger if: `generate_image` tool is unavailable, rate-limited, quota-exhausted, or if the user requests manual control.*
 1. **Write Visual Specification:** Save `<project>/<item>/visual-spec.json`.
 2. **Export Manual Prompt Guide:**
    Run:
@@ -119,22 +148,19 @@ When given a script line, analyze the core meaning and output:
    - Settings: 9:16 vertical aspect ratio.
    - Target destination: `<project>/<item>/frames/last-frame-original.png`.
 4. **User Generates Image:**
-   User generates the image in Google ImageFX, Imagen 3, or Gemini, and saves the image to `frames/last-frame-original.png`.
+   User generates the image in **Nano Banana** (or Midjourney / external generator), and saves the image to `frames/last-frame-original.png`.
 5. **Ingest & Prepare Frames:**
    Once user notifies the agent that the image is saved:
    ```bash
    python scripts/process_frames.py --item "<project>/<item>" --color "<HEX>"
    ```
-   This automatically:
-   - Resizes/crops `last-frame-original.png` into 1080×1920 `last-frame.png`.
-   - Generates the matching solid background `first-frame.png`.
-   - Builds `still-contact-sheet.jpg` and writes `<project>/gate2-qa.md`.
-6. **HALT and wait for user confirmation** on the still frame before proceeding to Gate 3.
+
+**Action:** **HALT and wait for user confirmation** on the still frame before proceeding to Gate 3.
 
 ---
 
 ### Gate 3: Video Assembly & Quality Assurance
-**Deliverable:** 5-second 9:16 silent assembly MP4 (`final-5s-noaudio.mp4`), 5-frame contact sheet, opening frame check, and end-frame comparison.
+**Deliverable:** 3 to 10-second 9:16 silent assembly MP4 (`final-{duration}s-noaudio.mp4`), adaptive contact sheet, opening frame check, and end-frame comparison.
 
 #### Manual Mode (Default / No-API):
 1. **Prepare Manual Video Package:**
@@ -265,4 +291,5 @@ No scene cuts, no camera movement, no zoom, no morphing, no new objects, no text
 - [ ] Final frame matches approved Gate 2 still frame composition.
 - [ ] Zero camera motion (no slow zoom, no panning, no 3D distortion).
 - [ ] Audio stream is confirmed 0 (completely silent MP4).
-- [ ] Exact 5-second duration at 24 fps.
+- [ ] Matches planned target duration (3 to 10 seconds, verified by ffprobe) at 24 fps.
+

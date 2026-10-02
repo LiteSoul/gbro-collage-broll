@@ -82,6 +82,7 @@ def main():
     parser = argparse.ArgumentParser(description="Analyze voiceover audio or text script for gbro-collage-broll")
     parser.add_argument("input", nargs="?", help="Voiceover text line OR path to an audio file (.mp3, .wav, etc.)")
     parser.add_argument("--wpm", type=int, default=140, help="Estimated speaking rate in words per minute (default: 140)")
+    parser.add_argument("--json", action="store_true", help="Output analysis in machine-readable JSON format")
     args = parser.parse_args()
 
     if not args.input:
@@ -98,18 +99,81 @@ def main():
             info = get_audio_duration(input_str)
             dur = info["duration"]
             rec = recommend_video_duration(dur)
+            exceeds_10s = dur > 10.0
+            
+            if args.json:
+                res = {
+                    "type": "audio",
+                    "file": input_str,
+                    "codec": info["codec"],
+                    "sample_rate": info["sample_rate"],
+                    "channels": info["channels"],
+                    "exact_duration_seconds": dur,
+                    "recommended_duration_seconds": rec,
+                    "exceeds_10s": exceeds_10s,
+                    "options": [
+                        {"type": "single_clip", "duration": rec},
+                        {"type": "split_clips", "suggested_count": 2, "duration_per_clip": 5} if dur > 7.0 else None
+                    ]
+                }
+                res["options"] = [o for o in res["options"] if o]
+                print(json.dumps(res, indent=2))
+                return
+
             print(f"=== Voiceover Audio Analysis ===")
             print(f"File:                 {input_str}")
             print(f"Format:               {info['codec'].upper()} ({info['sample_rate']} Hz, {info['channels']} ch)")
             print(f"Exact Audio Duration: {dur}s")
             print(f"Recommended Duration: {rec} seconds")
-            if dur > 10.0:
+            if exceeds_10s:
                 print(f"Note: Audio exceeds 10s. Consider generating two 5s B-roll clips or one 10s maximum clip.")
             return
 
     # Treat as text script
     est_dur, word_count, cjk_count = estimate_text_duration(input_str, wpm=args.wpm)
     rec = recommend_video_duration(est_dur)
+    exceeds_5s = est_dur > 6.0 or word_count > 18
+
+    if args.json:
+        options = []
+        if exceeds_5s:
+            options.append({
+                "option": "extended_clip",
+                "recommended_duration": rec,
+                "description": f"Extended {rec}s single clip with layered assembly (0-{rec-3}s) and hold ({rec-3}-{rec}s)"
+            })
+            options.append({
+                "option": "split_sequence",
+                "suggested_count": 2,
+                "duration_per_clip": 5,
+                "description": "Two 5s complementary B-roll clips cutting on the conceptual turn (highest viewer retention)"
+            })
+            options.append({
+                "option": "tighten_script",
+                "target_words": 13,
+                "duration": 5,
+                "description": "Condense the voiceover sentence to ~12-14 words to fit a single snappy 5s clip"
+            })
+        else:
+            options.append({
+                "option": "snappy_clip",
+                "recommended_duration": 5,
+                "description": "Quick 5s assembly: fast entrance (0-3.5s) + hold finished composition (3.5-5s)"
+            })
+
+        res = {
+            "type": "text",
+            "script": input_str,
+            "word_count": word_count,
+            "cjk_count": cjk_count,
+            "wpm": args.wpm,
+            "estimated_spoken_seconds": est_dur,
+            "recommended_duration_seconds": rec,
+            "exceeds_5s": exceeds_5s,
+            "options": options
+        }
+        print(json.dumps(res, indent=2))
+        return
 
     print(f"=== Voiceover Text Analysis ===")
     print(f"Script:               \"{input_str}\"")
@@ -119,10 +183,16 @@ def main():
         print(f"Word Count:           {word_count} words")
     print(f"Estimated Speaking:   ~{est_dur}s (at ~{args.wpm} words/min)")
     print(f"Recommended Duration: {rec} seconds")
-    if rec <= 5:
-        print("Pacing Advice:        Quick 5s assembly: fast entrance (0-3.5s) + hold finished collage (3.5-5s).")
+    
+    if exceeds_5s:
+        print(f"\n[!] DURATION NOTICE: This script takes ~{est_dur}s to speak at natural pace.")
+        print(f"    DO NOT force it into a 5s clip (would require speaking at {int(word_count / (5.0 / 60.0))} WPM).")
+        print(f"    Recommended Action Options:")
+        print(f"    1. Extended Clip:   Use {rec} seconds (supported up to 10s).")
+        print(f"    2. Split Sequence:  Split into two 5s clips (e.g. Cut 1 & Cut 2 on the key pivot).")
+        print(f"    3. Tighten Script:  Condense copy to ~12-14 words for a single 5s clip.")
     else:
-        print(f"Pacing Advice:        Extended {rec}s assembly: layered entrance (0-{rec-3}s) + hold finished collage ({rec-3}-{rec}s).")
+        print("Pacing Advice:        Quick 5s assembly: fast entrance (0-3.5s) + hold finished collage (3.5-5s).")
 
 if __name__ == "__main__":
     main()

@@ -13,7 +13,7 @@
 
 Turn a 3 to 10-second voiceover line (or audio recording) into a premium editorial **halftone paper-collage assembly animation** B-roll clip.
 
-Compatible with both **Manual / No-API mode** (generating complete prompt guides for manual web generation via Google Omni Flash, Google Flow, and Google ImageFX) and **Automated API mode** (direct Gemini Omni Flash first/last-frame generation).
+Compatible with both **Manual / Hybrid mode** (agent direct image generation with fallback to **Nano Banana**, plus manual video generation via Google Omni Flash / Google Flow / Veo) and **Automated API mode** (direct Gemini Omni Flash first/last-frame generation).
 
 ## Results
 
@@ -28,14 +28,16 @@ You can start the workflow in two ways:
 1. **Text Script (Simplest):** Just provide the sentence or spoken quote from your video script.
 2. **Audio File (`.mp3`, `.wav`, `.m4a`):** Run `python scripts/inspect_voiceover.py voiceover.mp3` to measure the exact spoken duration and automatically calculate the matching video length.
 
+> **Pacing Rule:** Always verify spoken duration with `python scripts/inspect_voiceover.py "<text>"` before Gate 1. Never force a 20+ word sentence into 5 seconds (which requires >250 WPM). Recommend 8–10 seconds or a 2-clip split sequence.
+
 ## Workflow: Three Approval Gates
 
 The core of this skill is a mandatory three-stage approval process, allowing you to focus on aesthetic judgment rather than wasting time or API credits:
 
-1. **Gate 1 · Metaphor Approval** — Proposes the visual metaphor (core idea / key objects / background color / assembly sequence) in text only. Halts for confirmation before creating any assets.
+1. **Gate 1 · Metaphor & Duration Approval** — Analyzes voiceover pacing and proposes the visual metaphor + duration pacing plan (core idea / duration & pacing / key objects / background color / assembly sequence) in text only. Halts for confirmation before creating any assets.
 2. **Gate 2 · Still-Frame Approval** — Prepares the color collage ending still frame (`last-frame.png`) and the matching solid-color opening frame (`first-frame.png`).
-   - *Manual Mode:* Exports `manual-image-prompt.md`. You generate the image in Google ImageFX or Gemini, save it to `frames/last-frame-original.png`, and the script automatically formats it and creates previews.
-   - *API Mode:* Generates the still frame via built-in agent image tools.
+   - *Direct Generation (Primary):* Agent generates the 9:16 image directly via built-in image tool for immediate review (time saver).
+   - *Nano Banana Fallback (Manual):* If image tool is unavailable, rate-limited, or exhausted, agent exports `manual-image-prompt.md`. You generate in **Nano Banana** (or Midjourney / external AI), save to `frames/last-frame-original.png`, and the script automatically formats it.
 3. **Gate 3 · Video Generation & QA** — Produces the 3–10 second assembly animation from empty first frame to approved last frame.
    - *Manual Mode (No API key needed):* Writes `manual-video-prompt.md` with complete prompts, pacing advice (5s vs 10s), generation settings, and keyframe links. You generate the video in Google Omni / Flow web generator using the first and last frame, save the MP4 into the project, and the script automatically strips audio, extracts 1-second contact sheets (adaptive Nx1 or 5x2 for 10s), and executes comprehensive QA.
    - *API Mode:* Calls `gemini-omni-flash-preview` automatically.
@@ -76,9 +78,10 @@ Trigger phrases: `collage b-roll`, `paper collage b-roll`, `halftone collage`, `
 ### 2. Gate 1: Review Metaphor
 The agent provides a concise visual metaphor proposal with key objects, color field, and assembly order. Reply `Approved` or request revisions.
 
-### 3. Gate 2: Still Frame (Manual or Automated)
-- In Manual Mode, the agent generates `manual-image-prompt.md`.
-- Copy the prompt, generate in Google ImageFX / Imagen 3, save to `<item>/frames/last-frame-original.png`.
+### 3. Gate 2: Still Frame (Agent Direct or Nano Banana)
+- By default, the agent directly generates the 9:16 still frame via built-in tools.
+- If the tool is rate-limited or manual generation is requested, the agent generates `manual-image-prompt.md`.
+- Copy the prompt, generate in **Nano Banana** (or Midjourney / Imagen), and save to `<item>/frames/last-frame-original.png`.
 - Run `python scripts/process_frames.py --item "<item_path>" --color "<HEX>"`.
 - Review `still-contact-sheet.jpg` and approve.
 
@@ -88,7 +91,7 @@ The agent provides a concise visual metaphor proposal with key objects, color fi
   - Image 1: `<item>/frames/first-frame.png`
   - Image 2: `<item>/frames/last-frame.png`
   - Prompt: Copied from `manual-video-prompt.md`
-  - Settings: 9:16 vertical, 5 seconds
+  - Settings: 9:16 vertical, 3 to 10 seconds (e.g. 5s or 10s)
 - Download the resulting MP4 and save to `<item>/omni/run-v01/final-5s.mp4`.
 - Run `python scripts/process_video.py --item "<item_path>"` or tell the agent: *"I have saved the video."*
 - The workflow automatically strips audio, generates `contact-sheet.jpg`, checks the opening frame, creates `end-frame-comparison.jpg`, and writes `gate3-qa.md`.
@@ -121,7 +124,7 @@ gbro-collage-broll/
 Rushing directly into video generation burns time and generation quotas on flawed concepts. Adjusting text at Gate 1 is instant and free; selecting or regenerating an image at Gate 2 is far faster than redoing a full video.
 
 **Do I need an API key to use this?**
-No! Manual Mode allows you to generate all prompts, context, and keyframe assets locally, use free web generators like Google ImageFX and Google Omni / Flow, and let the workflow seamlessly process and QA your deliverables.
+No! Manual Mode allows you to generate all prompts, context, and keyframe assets locally, use web generators like Nano Banana and Google Omni / Flow, and let the workflow seamlessly process and QA your deliverables.
 
 **What if the video's first frame shows paper fragments at the edge?**
 Slight edge visibility is normal for neural video interpolation. For strict zero-paper beginnings, a clean solid color frame is provided as Image 1.
