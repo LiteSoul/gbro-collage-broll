@@ -11,81 +11,109 @@
   <img src="assets/demo-teal.gif" width="180" alt="Teal background: scissors cut open the shot track">
 </p>
 
-Compress a roughly five-second voiceover script into one sharp visual idea, then generate a premium editorial **halftone paper-collage assembly animation** B-roll clip.
+Turn a ~5s voiceover line into a premium editorial **halftone paper-collage assembly animation** B-roll clip.
 
-Turn a ~5s voiceover line into a premium editorial paper-collage assemble-from-empty B-roll clip, powered by Gemini Omni Flash first/last-frame video generation.
+Compatible with both **Manual / No-API mode** (generating complete prompt guides for manual web generation via Google Omni Flash, Google Flow, and Google ImageFX) and **Automated API mode** (direct Gemini Omni Flash first/last-frame generation).
 
 ## Results
 
 - Bold, flat, solid-color paper fields + black-and-white halftone photo cutouts + colored cardstock accents
-- Elements slide in, lock into place, and assemble one by one from an empty scene (with a stop-motion feel), rather than fading in or slowly zooming
-- The default output is a silent 9:16, 5-second, 720×1280, 24 fps MP4 that can be placed directly under a voiceover
+- Elements slide in, snap into place, and assemble piece-by-piece from an empty canvas with a tactile stop-motion feel (not a simple fade or slow zoom)
+- Default deliverable is a silent 9:16, 5-second, 720×1280 or 1080×1920, 24 fps MP4 ready to drop directly beneath voiceover audio
 
 ## Workflow: Three Approval Gates
 
-The core of this skill is not a prompt template but a mandatory three-stage approval process, so you can focus on aesthetic judgment instead of burning through generation costs:
+The core of this skill is a mandatory three-stage approval process, allowing you to focus on aesthetic judgment rather than wasting time or API credits:
 
-1. **Gate 1 · Metaphor approval** — Outputs only the visual metaphor proposal (core idea / key objects / background color / assembly order), without generating any images or video
-2. **Gate 2 · Still-frame approval** — Generates a color collage still frame and contact sheet only after approval, then waits for your confirmation again
-3. **Gate 3 · Video generation** — Once the still frame is approved, automatically creates a first/last-frame assembly animation with `gemini-omni-flash-preview`, including complete QA (frame extraction at one-second intervals, empty first-frame verification, and final-frame comparison)
+1. **Gate 1 · Metaphor Approval** — Proposes the visual metaphor (core idea / key objects / background color / assembly sequence) in text only. Halts for confirmation before creating any assets.
+2. **Gate 2 · Still-Frame Approval** — Prepares the color collage ending still frame (`last-frame.png`) and the matching solid-color opening frame (`first-frame.png`).
+   - *Manual Mode:* Exports `manual-image-prompt.md`. You generate the image in Google ImageFX or Gemini, save it to `frames/last-frame-original.png`, and the script automatically formats it and creates previews.
+   - *API Mode:* Generates the still frame via built-in agent image tools.
+3. **Gate 3 · Video Generation & QA** — Produces the 5-second assembly animation from empty first frame to approved last frame.
+   - *Manual Mode (No API key needed):* Writes `manual-video-prompt.md` with complete prompts, generation settings, and keyframe links. You generate the video in Google Omni / Flow web generator using the first and last frame, save `final-5s.mp4` to the project, and the script automatically strips audio, extracts 1-second contact sheets, and executes comprehensive QA.
+   - *API Mode:* Calls `gemini-omni-flash-preview` automatically.
 
 Batch mode supports partial approval: only approved items proceed to the next stage.
 
 ## Requirements
 
-When first invoked, the skill automatically runs `scripts/check_setup.sh` for a self-check and provides configuration guidance for anything missing. It requires:
-
-| Dependency | Description |
-|------|------|
-| Codex environment | Gate 2 still-frame generation depends on the built-in `image_gen` tool |
-| `GEMINI_API_KEY` | Create one in [Google AI Studio](https://aistudio.google.com/apikey); video generation is usage-based |
-| Python >= 3.10 | Used by the video-generation scripts |
-| `google-genai >= 2.10.0` | The skill guides you through creating a shared venv at `~/hyperframes-projects/.omni-venv/` |
-| ffmpeg / ffprobe | Used for first/last-frame processing, audio-track removal, and contact sheets |
-
-The video-generation scripts (`scripts/generate_video.py` + `scripts/upload_file.py`) are bundled with the skill, so no additional skills need to be installed.
-
-## Installation
-
-Place the entire directory in your agent skills directory (for example, `~/.agents/skills/` or `~/.claude/skills/`):
+Run the cross-platform environment self-check:
 
 ```bash
-git clone https://github.com/pyang5166/gbro-collage-broll.git ~/.agents/skills/gbro-collage-broll
+# Check Manual Mode (No API key required)
+python scripts/check_setup.py
+
+# Check API Mode (if using GEMINI_API_KEY)
+python scripts/check_setup.py --mode api
 ```
 
-## Usage
+| Dependency | Manual Mode (Default) | API Mode | Notes |
+|---|---|---|---|
+| Python >= 3.10 | Required | Required | Standard Python environment |
+| ffmpeg / ffprobe | Required | Required | Used for frame scaling, solid backgrounds, audio stripping & QA |
+| `GEMINI_API_KEY` | **Not required** | Required | Created at [Google AI Studio](https://aistudio.google.com/apikey) |
+| `google-genai` SDK | **Not required** | Required (>= 2.10.0) | For direct API calls |
+
+## How to Use
+
+### 1. Trigger the Skill
 
 Tell your agent:
 
 ```text
-collage b-roll：很多人以为 AI 是来替你思考的，其实它更像一面镜子，会把你问题里的漏洞照出来。
+collage b-roll: Many people think AI is here to think for you, but it's really more like a mirror that reveals the hidden cracks in your questions.
 ```
 
-Trigger phrases: `collage b-roll`, `纸拼贴 b-roll`, `半调拼贴`, `拼贴风格配画面`, and `gbro-collage-broll`.
+Trigger phrases: `collage b-roll`, `paper collage b-roll`, `halftone collage`, `assemble animation`, or `gbro-collage-broll`.
 
-Then confirm each step in order from Gate 1 → Gate 2 → Gate 3. You can also provide multiple lines in a batch; each line receives one metaphor and one finished clip.
+### 2. Gate 1: Review Metaphor
+The agent provides a concise visual metaphor proposal with key objects, color field, and assembly order. Reply `Approved` or request revisions.
+
+### 3. Gate 2: Still Frame (Manual or Automated)
+- In Manual Mode, the agent generates `manual-image-prompt.md`.
+- Copy the prompt, generate in Google ImageFX / Imagen 3, save to `<item>/frames/last-frame-original.png`.
+- Run `python scripts/process_frames.py --item "<item_path>" --color "<HEX>"`.
+- Review `still-contact-sheet.jpg` and approve.
+
+### 4. Gate 3: Video Assembly (Manual or Automated)
+- In Manual Mode, the agent generates `manual-video-prompt.md` and `omni-prompt.txt`.
+- Open Google Omni / Flow Video Generator, select Start & End frame mode:
+  - Image 1: `<item>/frames/first-frame.png`
+  - Image 2: `<item>/frames/last-frame.png`
+  - Prompt: Copied from `manual-video-prompt.md`
+  - Settings: 9:16 vertical, 5 seconds
+- Download the resulting MP4 and save to `<item>/omni/run-v01/final-5s.mp4`.
+- Run `python scripts/process_video.py --item "<item_path>"` or tell the agent: *"I have saved the video."*
+- The workflow automatically strips audio, generates `contact-sheet.jpg`, checks the opening frame, creates `end-frame-comparison.jpg`, and writes `gate3-qa.md`.
 
 ## Directory Structure
 
 ```text
 gbro-collage-broll/
-├── SKILL.md                        # Main skill documentation (three-gate protocol + prompt templates + QA standards)
-├── agents/openai.yaml              # Codex interface configuration
-├── evals/evals.json                # Four gate-behavior evaluations
+├── SKILL.md                          # Main skill documentation (Three-gate protocol, prompt templates, QA rules)
+├── README.md                         # Chinese documentation
+├── README.en.md                      # English documentation
+├── README.ja.md                      # Japanese documentation
+├── agents/openai.yaml                # Agent interface definition
+├── evals/evals.json                  # Gate-behavior evaluation scenarios
 └── scripts/
-    ├── check_setup.sh              # First-use environment self-check
-    ├── generate_video.py           # Gemini Omni Flash batch video generation
-    ├── upload_file.py              # Files API upload helper
-    └── generate_veo_first_last.py  # Legacy Veo path (retained only for compatibility; not used by default)
+    ├── check_setup.py                # Cross-platform environment check (Manual & API modes)
+    ├── check_setup.sh                # Shell environment check
+    ├── process_frames.py             # Gate 2 image ingestion, scaling, solid first-frame generator & QA
+    ├── prepare_manual_video.py       # Gate 3 manual prompt & specifications generator
+    ├── process_video.py              # Gate 3 audio stripper, 5-frame contact sheet & QA verifier
+    ├── generate_video.py             # Gemini Omni Flash batch video generator (with --manual support)
+    ├── upload_file.py                # Files API upload helper (API mode)
+    └── generate_veo_first_last.py    # Legacy Veo pipeline (retained for compatibility)
 ```
 
 ## FAQ
 
 **Why require two rounds of human approval?**
-Sending a poor metaphor or still frame directly into video generation wastes real API spend. Revising text at Gate 1 is free, and regenerating one image at Gate 2 is far cheaper than rerunning an entire video.
+Rushing directly into video generation burns time and generation quotas on flawed concepts. Adjusting text at Gate 1 is instant and free; selecting or regenerating an image at Gate 2 is far faster than redoing a full video.
 
-**What if a small piece of paper is visible at the edge of the first frame?**
-A slight overlap is acceptable. For a strictly empty opening frame, use an editable timeline animation tool to patch the beginning.
+**Do I need an API key to use this?**
+No! Manual Mode allows you to generate all prompts, context, and keyframe assets locally, use free web generators like Google ImageFX and Google Omni / Flow, and let the workflow seamlessly process and QA your deliverables.
 
-**Can I change the video model?**
-The default is fixed to `gemini-omni-flash-preview`; it switches only when another model is explicitly specified.
+**What if the video's first frame shows paper fragments at the edge?**
+Slight edge visibility is normal for neural video interpolation. For strict zero-paper beginnings, a clean solid color frame is provided as Image 1.

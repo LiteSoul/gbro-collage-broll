@@ -16,11 +16,9 @@ import time
 import urllib.request
 import urllib.error
 import uuid
-from google import genai
 
-# Load local upload helper logic inline to prevent dependency issues
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from upload_file import upload_file, wait_for_active
+# Note: google-genai and upload_file are imported lazily inside API functions
+# to allow manual prompt export mode without requiring google-genai SDK.
 
 def get_api_key(args):
     """Retrieves API key from command args or environment."""
@@ -135,6 +133,11 @@ def resolve_or_upload_asset(asset_path, mime_type, api_key, strip_audio=False):
                 print("Falling back to uploading the original video with audio.", file=sys.stderr)
 
         print(f"Uploading asset '{upload_path}'...")
+        sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+        try:
+            from upload_file import upload_file, wait_for_active
+        except ImportError as e:
+            raise RuntimeError(f"Error importing upload_file helper: {e}")
         file_meta = upload_file(upload_path, api_key=api_key)
         file_name = file_meta.get("name")
         # Wait for file to become active
@@ -240,6 +243,14 @@ def generate_video(prompt, api_key, model="gemini-omni-flash-preview", aspect_ra
     print(f"Prompt: '{prompt}' | Aspect Ratio: {aspect_ratio} | Duration: {duration}")
     
     # Initialize the client and call interactions.create
+    try:
+        from google import genai
+    except ImportError:
+        raise RuntimeError(
+            "The 'google-genai' SDK is required for direct API generation.\n"
+            "Install it with: pip install 'google-genai>=2.10.0'\n"
+            "Or run in Manual Mode with --manual to generate prompts for manual web generation."
+        )
     client = genai.Client(api_key=api_key, vertexai=False)
     try:
         interaction = client.interactions.create(
@@ -329,13 +340,55 @@ def main():
     parser.add_argument("--batch", help="Path to a JSON file containing an array of generation jobs")
     parser.add_argument("--prompts-file", help="Path to a text file containing one prompt per line to run in parallel")
     parser.add_argument("--concurrency", type=int, default=3, help="Maximum number of concurrent executions (default: 3)")
+    parser.add_argument("--manual", action="store_true", help="Manual mode: export complete prompt packages and guides without requiring GEMINI_API_KEY")
 
     args = parser.parse_args()
 
     api_key = get_api_key(args)
-    if not api_key:
-        print("Error: API key is not set. Use --api-key or set GEMINI_API_KEY environment variable.", file=sys.stderr)
-        sys.exit(1)
+    if not api_key and not args.manual:
+        # If user runs batch or single prompt without API key, gracefully fallback to manual export mode
+        print("INFO: No GEMINI_API_KEY detected. Switching to Manual Mode (exporting prompt guides)...")
+        args.manual = True
+
+    if args.manual:
+        from prepare_manual_video import generate_manual_package
+        if args.batch:
+            if not os.path.exists(args.batch):
+                print(f"Error: Batch JSON file '{args.batch}' not found.", file=sys.stderr)
+                sys.exit(1)
+            with open(args.batch, "r", encoding="utf-8") as f:
+                jobs = json.load(f)
+            print(f"[Manual Mode] Exporting {len(jobs)} manual prompt guides...")
+            from pathlib import Path
+            for job in jobs:
+                p = job.get("prompt", "")
+                images = job.get("image", [])
+                out_path = Path(job.get("output", "media/output.mp4"))
+                item_dir = out_path.parent.parent if "omni" in out_path.parts else out_path.parent
+                item_dir.mkdir(parents=True, exist_ok=True)
+                generate_manual_package(
+                    item_dir=item_dir,
+                    prompt_text=p,
+                    duration=job.get("duration", 5),
+                    aspect_ratio=job.get("aspect_ratio", "9:16"),
+                    color=job.get("color", "#1E2A38")
+                )
+            print("[Manual Mode] All prompt guides generated successfully! Please follow the instructions in each item's manual-video-prompt.md.")
+            sys.exit(0)
+        elif args.prompt:
+            item_dir = os.path.dirname(args.output) if args.output else "media"
+            os.makedirs(item_dir, exist_ok=True)
+            generate_manual_package(
+                item_dir=item_dir,
+                prompt_text=args.prompt,
+                duration=5,
+                aspect_ratio=args.aspect_ratio
+            )
+            print("[Manual Mode] Prompt guide generated successfully!")
+            sys.exit(0)
+        else:
+            parser.print_help()
+            sys.exit(1)
 
     # 1. Handle Batch JSON execution
     if args.batch:

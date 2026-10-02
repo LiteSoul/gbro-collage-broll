@@ -3,26 +3,32 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "用 gbro-collage-broll 帮我把这句做成拼贴 B-roll：很多人以为 AI 是来替你思考的，其实它更像一面镜子，会把你问题里的漏洞照出来。",
+      "prompt": "Use gbro-collage-broll to turn this quote into a collage B-roll: 'Many people think AI is here to think for you, but it's really more like a mirror that reveals the hidden cracks in your questions.'",
       "expected_output": "At Gate 1, should only propose one clear visual metaphor with key objects, palette and assembly order, then stop for approval. It must not generate an image or call any video model yet.",
       "files": []
     },
     {
       "id": 2,
-      "prompt": "上一轮你给的‘知识卡片通过轨道重新连成网络’隐喻我确认了。继续帮我做静帧，底色不要全是蓝色，素材可以有彩色纸片。",
-      "expected_output": "At Gate 2, should create a varied-color editorial halftone paper-collage visual spec and final still, save it in the project, show a numbered still contact sheet, and stop for a second approval. It must not call Omni Flash yet.",
+      "prompt": "The metaphor 'knowledge index cards connecting into a glowing network along brass rails' is approved. Please prepare the still frame for Gate 2. I do not have an image generation API key, so provide me the prompt and specifications so I can manually generate it in Google ImageFX.",
+      "expected_output": "At Gate 2, should create a visual-spec.json and export manual-image-prompt.md containing full prompt, 9:16 aspect ratio, background color, and instructions to save last-frame-original.png. Then halt and wait for user confirmation without attempting API image generation.",
       "files": []
     },
     {
       "id": 3,
-      "prompt": "这些彩色拼贴静帧全部通过，帮我继续生成视频。",
-      "expected_output": "At Gate 3, should automatically use gemini-omni-flash-preview through the gemini-omni-flash-api workflow without asking for a model, use exact empty first and approved last frames, generate 5s 9:16 video, strip audio, create contact sheets and verify the end frame. It must not default to Veo.",
+      "prompt": "I have approved the still frames. Now proceed to Gate 3 video generation. Remember I do not have an API key, so do not call the Gemini API directly. Generate the complete video prompt and specifications into a file so I can use Google Omni video generator myself.",
+      "expected_output": "At Gate 3, should export manual-video-prompt.md and omni-prompt.txt containing the exact Omni stop-motion prompt, links to first-frame.png and last-frame.png, generation settings (9:16 vertical, 5s duration, 24fps), and target save path (final-5s.mp4). The agent should guide the user and halt until the user saves the video.",
       "files": []
     },
     {
       "id": 4,
-      "prompt": "这五条里 1、2、4 的隐喻通过，3 和 5 我还想改。先继续下一步。",
-      "expected_output": "Should advance only items 1, 2 and 4 to still generation while keeping items 3 and 5 at the metaphor revision gate. It must not generate video for any item.",
+      "prompt": "I have saved final-5s.mp4 in the omni folder. Please continue the workflow and finalize the delivery.",
+      "expected_output": "The agent should run the video post-processor (process_video.py) to strip audio (producing final-5s-noaudio.mp4), generate contact-sheet.jpg, extract video-first-frame.jpg and video-last-frame.jpg, generate end-frame-comparison.jpg, run ffprobe QA, write gate3-qa.md, and present the final deliverables.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Out of these five items, metaphors 1, 2, and 4 are approved, but 3 and 5 need revisions. Advance only the approved items.",
+      "expected_output": "Should advance only items 1, 2 and 4 to Gate 2 while keeping items 3 and 5 at Gate 1 metaphor revision. Must not generate video for any item.",
       "files": []
     }
   ]

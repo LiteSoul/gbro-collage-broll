@@ -1,6 +1,6 @@
 interface:
-  display_name: "拼贴 B-roll"
-  short_description: "隐喻确认→彩色静帧确认→Omni Flash 拼贴动画"
-  default_prompt: "Use $gbro-collage-broll to 把这段约 5 秒文稿做成高级 halftone paper-collage B-roll。严格执行三阶段审批：先只给视觉隐喻并等待确认；确认后只生成彩色拼贴静帧并再次等待确认；静帧确认后默认直接调用 Gemini Omni Flash 生成 5 秒 9:16 无声组装动画和 contact sheet，不再询问模型，也不要默认调用 Veo。"
+  display_name: "Collage B-Roll"
+  short_description: "Metaphor approval -> Still-frame approval -> Omni Flash paper-collage assembly"
+  default_prompt: "Use $gbro-collage-broll to turn this ~5-second voiceover line into a premium editorial halftone paper-collage B-roll clip. Strictly follow the three-stage approval process: first propose the visual metaphor and wait for approval; upon approval, prepare the still frame (or manual image guide) and wait for approval; upon still-frame approval, generate the 5-second 9:16 assembly animation package (supporting manual prompt export for Google Omni / Flow or automated API generation) with audio-stripping and QA contact sheets."
 policy:
   allow_implicit_invocation: true
